@@ -341,10 +341,14 @@ namespace iss {
         }
     }
 
-    export function createSocket(address: string): Promise<Socket> {
+    export function createSocket(address: string, tls: boolean = false): Promise<Socket> {
         return new Promise<Socket>((resolve, reject) => {
             let sock = new Socket();
-            sock.socket = new WebSocket("ws://" + address + "/1/sockets");
+            let proto = "ws://";
+            if (tls) {
+                proto = "wss://";
+            }
+            sock.socket = new WebSocket(proto + address + "/1/sockets");
             sock.socket.onopen = function (this: WebSocket, evt: Event) {
                 // wait for the hello message
             };
@@ -377,9 +381,13 @@ namespace iss {
     export class Client {
         address: string;
         clientType: string | null = null;
-        constructor(addr: string, client: string | null) {
-            this.address = addr;
+        constructor(addr: string, client: string | null, tls: boolean = false) {
             this.clientType = client;
+            if (tls) {
+                this.address = "https://" + addr;
+            } else {
+                this.address = "http://" + addr;
+            }
         }
 
         animateWindows(animations: WindowAnimation[]): Promise<void> {
@@ -396,7 +404,7 @@ namespace iss {
                     console.log("net error animating windows:", err);
                     reject(err);
                 });
-                let url = "http://" + this.address + "/1/animations";
+                let url = this.address + "/1/animations";
                 req.open("POST", url);
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
@@ -420,7 +428,7 @@ namespace iss {
                     console.log("net error creating hdmi window:", err);
                     reject(err);
                 });
-                let url = "http://" + this.address + "/1/windows";
+                let url = this.address + "/1/windows";
                 if (sessionId != null) {
                     url += "?session_id=" + sessionId;
                 }
@@ -451,7 +459,7 @@ namespace iss {
                     console.log("net error creating web window:", err);
                     reject(err);
                 });
-                let endpoint = "http://" + this.address + "/1/windows";
+                let endpoint = this.address + "/1/windows";
                 if (sessionId != null) {
                     endpoint += "?session_id=" + sessionId;
                 }
@@ -485,7 +493,7 @@ namespace iss {
                 req.addEventListener("error", function (err: ErrorEvent) {
                     reject(err);
                 });
-                req.open("DELETE", "http://" + this.address + "/1/windows/" + winId);
+                req.open("DELETE", this.address + "/1/windows/" + winId);
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -506,7 +514,7 @@ namespace iss {
                 req.addEventListener("error", function (err: ErrorEvent) {
                     reject(err);
                 });
-                req.open("DELETE", "http://" + this.address + "/1/osd");
+                req.open("DELETE", this.address + "/1/osd");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -560,7 +568,7 @@ namespace iss {
                 req.addEventListener("error", function (err: ErrorEvent) {
                     reject("net error failed to edit config: " + err);
                 });
-                req.open("PUT", "http://" + this.address + "/1/audio-config");
+                req.open("PUT", this.address + "/1/audio-config");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -585,7 +593,7 @@ namespace iss {
                     console.log("net error getting cloud connect info:", err);
                     reject(err);
                 });
-                req.open("GET", "http://" + this.address + "/1/device/cloud-connect-info");
+                req.open("GET", this.address + "/1/device/cloud-connect-info");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -607,7 +615,29 @@ namespace iss {
                 req.addEventListener("error", function (err: ErrorEvent) {
                     reject(err);
                 });
-                req.open("GET", "http://" + this.address + "/1/layouts");
+                req.open("GET", this.address + "/1/layouts");
+                if (this.clientType != null) {
+                    req.setRequestHeader("X-Client", this.clientType);
+                }
+                req.send();
+            });
+        }
+
+        getWindows(): Promise<Window[]> {
+            return new Promise<Window[]>((resolve, reject) => {
+                let req = new XMLHttpRequest();
+                req.addEventListener("load", function () {
+                    if (req.status == 200) {
+                        let windows = JSON.parse(req.response) as Window[];
+                        resolve(windows);
+                    } else {
+                        reject("did not receive 200 response. got " + req.status + " (" + req.response + ")");
+                    }
+                });
+                req.addEventListener("error", function (err: ErrorEvent) {
+                    reject(err);
+                });
+                req.open("GET", this.address + "/1/windows");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -630,7 +660,7 @@ namespace iss {
                     reject(err);
                 });
                 let body = { id: layoutId }
-                req.open("PUT", "http://" + this.address + "/1/window-manager/layout");
+                req.open("PUT", this.address + "/1/window-manager/layout");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -652,7 +682,7 @@ namespace iss {
                 req.addEventListener("error", function (err: ErrorEvent) {
                     reject(err);
                 });
-                req.open("GET", "http://" + this.address + "/1/device/network");
+                req.open("GET", this.address + "/1/device/network");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -673,7 +703,7 @@ namespace iss {
                 req.addEventListener("error", function (err: ErrorEvent) {
                     reject(err);
                 });
-                req.open("POST", "http://" + this.address + "/1/osd");
+                req.open("POST", this.address + "/1/osd");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }

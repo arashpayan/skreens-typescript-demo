@@ -119,10 +119,14 @@ var iss;
         }
     }
     iss.Socket = Socket;
-    function createSocket(address) {
+    function createSocket(address, tls = false) {
         return new Promise((resolve, reject) => {
             let sock = new Socket();
-            sock.socket = new WebSocket("ws://" + address + "/1/sockets");
+            let proto = "ws://";
+            if (tls) {
+                proto = "wss://";
+            }
+            sock.socket = new WebSocket(proto + address + "/1/sockets");
             sock.socket.onopen = function (evt) {
                 // wait for the hello message
             };
@@ -152,10 +156,15 @@ var iss;
     }
     iss.createSocket = createSocket;
     class Client {
-        constructor(addr, client) {
+        constructor(addr, client, tls = false) {
             this.clientType = null;
-            this.address = addr;
             this.clientType = client;
+            if (tls) {
+                this.address = "https://" + addr;
+            }
+            else {
+                this.address = "http://" + addr;
+            }
         }
         animateWindows(animations) {
             return new Promise((resolve, reject) => {
@@ -172,7 +181,7 @@ var iss;
                     console.log("net error animating windows:", err);
                     reject(err);
                 });
-                let url = "http://" + this.address + "/1/animations";
+                let url = this.address + "/1/animations";
                 req.open("POST", url);
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
@@ -196,7 +205,7 @@ var iss;
                     console.log("net error creating hdmi window:", err);
                     reject(err);
                 });
-                let url = "http://" + this.address + "/1/windows";
+                let url = this.address + "/1/windows";
                 if (sessionId != null) {
                     url += "?session_id=" + sessionId;
                 }
@@ -226,7 +235,7 @@ var iss;
                     console.log("net error creating web window:", err);
                     reject(err);
                 });
-                let endpoint = "http://" + this.address + "/1/windows";
+                let endpoint = this.address + "/1/windows";
                 if (sessionId != null) {
                     endpoint += "?session_id=" + sessionId;
                 }
@@ -260,7 +269,7 @@ var iss;
                 req.addEventListener("error", function (err) {
                     reject(err);
                 });
-                req.open("DELETE", "http://" + this.address + "/1/windows/" + winId);
+                req.open("DELETE", this.address + "/1/windows/" + winId);
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -281,7 +290,7 @@ var iss;
                 req.addEventListener("error", function (err) {
                     reject(err);
                 });
-                req.open("DELETE", "http://" + this.address + "/1/osd");
+                req.open("DELETE", this.address + "/1/osd");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -328,7 +337,7 @@ var iss;
                 req.addEventListener("error", function (err) {
                     reject("net error failed to edit config: " + err);
                 });
-                req.open("PUT", "http://" + this.address + "/1/audio-config");
+                req.open("PUT", this.address + "/1/audio-config");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -353,7 +362,7 @@ var iss;
                     console.log("net error getting cloud connect info:", err);
                     reject(err);
                 });
-                req.open("GET", "http://" + this.address + "/1/device/cloud-connect-info");
+                req.open("GET", this.address + "/1/device/cloud-connect-info");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -375,7 +384,29 @@ var iss;
                 req.addEventListener("error", function (err) {
                     reject(err);
                 });
-                req.open("GET", "http://" + this.address + "/1/layouts");
+                req.open("GET", this.address + "/1/layouts");
+                if (this.clientType != null) {
+                    req.setRequestHeader("X-Client", this.clientType);
+                }
+                req.send();
+            });
+        }
+        getWindows() {
+            return new Promise((resolve, reject) => {
+                let req = new XMLHttpRequest();
+                req.addEventListener("load", function () {
+                    if (req.status == 200) {
+                        let windows = JSON.parse(req.response);
+                        resolve(windows);
+                    }
+                    else {
+                        reject("did not receive 200 response. got " + req.status + " (" + req.response + ")");
+                    }
+                });
+                req.addEventListener("error", function (err) {
+                    reject(err);
+                });
+                req.open("GET", this.address + "/1/windows");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -398,7 +429,7 @@ var iss;
                     reject(err);
                 });
                 let body = { id: layoutId };
-                req.open("PUT", "http://" + this.address + "/1/window-manager/layout");
+                req.open("PUT", this.address + "/1/window-manager/layout");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -420,7 +451,7 @@ var iss;
                 req.addEventListener("error", function (err) {
                     reject(err);
                 });
-                req.open("GET", "http://" + this.address + "/1/device/network");
+                req.open("GET", this.address + "/1/device/network");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
@@ -441,7 +472,7 @@ var iss;
                 req.addEventListener("error", function (err) {
                     reject(err);
                 });
-                req.open("POST", "http://" + this.address + "/1/osd");
+                req.open("POST", this.address + "/1/osd");
                 if (this.clientType != null) {
                     req.setRequestHeader("X-Client", this.clientType);
                 }
